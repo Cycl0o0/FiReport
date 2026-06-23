@@ -392,6 +392,12 @@ onMounted(async () => {
         Made with <span class="text-red-400">♥</span> by <span class="font-semibold text-amber-50">Cycl0o0</span>
       </p>
       <span class="h-4 w-px bg-amber-500/20"></span>
+      <a href="https://github.com/Cycl0o0/FiReport" target="_blank" rel="noopener"
+         class="flex items-center gap-1 text-xs text-amber-200/80 transition hover:text-amber-50" aria-label="Source on GitHub">
+        <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 fill-current"><path d="M12 .5C5.7.5.5 5.7.5 12a11.5 11.5 0 0 0 7.9 10.9c.6.1.8-.2.8-.5v-1.7c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17 4.6 18 4.9 18 4.9c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.6.8.5A11.5 11.5 0 0 0 23.5 12C23.5 5.7 18.3.5 12 .5Z"/></svg>
+        Source
+      </a>
+      <span class="h-4 w-px bg-amber-500/20"></span>
       <span class="text-[10px] text-amber-200/50">{{ t('updated') }} {{ fmtTime(lastUpdate) }}</span>
     </footer>
 
@@ -474,7 +480,11 @@ onMounted(async () => {
           <!-- credit -->
           <div class="flex items-center justify-between border-t border-amber-500/15 pt-2">
             <p class="text-[11px] text-amber-200/80">Made with <span class="text-red-400">♥</span> by <span class="font-semibold text-amber-50">Cycl0o0</span></p>
-            <span class="text-[9px] text-amber-200/50">{{ t('updated') }} {{ fmtTime(lastUpdate) }}</span>
+            <a href="https://github.com/Cycl0o0/FiReport" target="_blank" rel="noopener"
+               class="flex items-center gap-1 text-[11px] text-amber-200/80" aria-label="Source on GitHub">
+              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 fill-current"><path d="M12 .5C5.7.5.5 5.7.5 12a11.5 11.5 0 0 0 7.9 10.9c.6.1.8-.2.8-.5v-1.7c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17 4.6 18 4.9 18 4.9c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.6.8.5A11.5 11.5 0 0 0 23.5 12C23.5 5.7 18.3.5 12 .5Z"/></svg>
+              Source
+            </a>
           </div>
         </div>
       </div>
