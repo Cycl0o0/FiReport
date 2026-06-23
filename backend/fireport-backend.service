@@ -1,0 +1,18 @@
+[Unit]
+Description=FiReport backend (Flask/gunicorn) — real-time wildfire data for France
+After=network.target
+
+[Service]
+Type=simple
+User=fireport
+Group=fireport
+WorkingDirectory=/opt/fireport/backend
+EnvironmentFile=/opt/fireport/backend/.env
+ExecStart=/opt/fireport/backend/venv/bin/gunicorn \
+    --workers 2 --threads 4 --timeout 60 \
+    --bind 127.0.0.1:5004 app:app
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
