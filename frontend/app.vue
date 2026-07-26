@@ -18,6 +18,55 @@ const selected = ref<any>(null)
 const loading = ref(true)
 const lastUpdate = ref<number | null>(null)
 const sheet = ref(false) // mobile bottom-sheet expanded state
+const prefecture = ref<any>(null) // live préfecture communiqués + evacuated communes
+
+// ---- Gironde wildfire safety notice ---------------------------------------
+// Official civil-safety guidance (sapeurs-pompiers / préfecture de la Gironde).
+// Bump SAFETY_KEY when the wording changes so a prior dismissal is voided.
+const SAFETY_KEY = 'fireport-alert-gironde-2026-07'
+const showSafety = ref(false)
+const AID_URL = 'https://www.bordeaux-metropole.fr/actualites/incendies-en-gironde-accueil-personnes-evacuees-collecte-dons'
+const L = (o: { fr: string; en: string }) => o[lang.value]
+
+const safety = {
+  badge:   { fr: 'Incendie exceptionnel', en: 'Exceptional wildfire' },
+  region:  { fr: 'Gironde · vigilance noire', en: 'Gironde · black-level alert' },
+  title:   { fr: 'Les bons réflexes', en: 'The right reflexes' },
+  intro:   {
+    fr: 'Un feu de forêt majeur touche l’ouest de la Gironde. Voici les consignes officielles de sécurité.',
+    en: 'A major wildfire is hitting western Gironde. Here are the official safety instructions.',
+  },
+  do_h:    { fr: 'À faire', en: 'Do' },
+  dont_h:  { fr: 'À éviter', en: 'Avoid' },
+  do: [
+    { fr: 'Se confiner : fermer portes, fenêtres et volets, boucher les aérations.', en: 'Shelter inside: close doors, windows and shutters, block air vents.' },
+    { fr: 'Respirer à travers un linge humide face aux fumées.', en: 'Breathe through a damp cloth against the smoke.' },
+    { fr: 'Écouter France Bleu Gironde (100.1 FM) et les alertes FR-Alert.', en: 'Tune to France Bleu Gironde (100.1 FM) and FR-Alert warnings.' },
+    { fr: 'Dégager les accès et se signaler aux secours si vous êtes isolé.', en: 'Keep access clear and signal to rescuers if you are cut off.' },
+    { fr: 'Préparer un sac : papiers, médicaments, eau, lampe, chargeur.', en: 'Pack a go-bag: ID, medication, water, torch, charger.' },
+  ],
+  dont: [
+    { fr: 'Ne pas prendre la route sans consigne : vous gêneriez les secours.', en: 'Don’t drive off without instruction — you would block the rescue services.' },
+    { fr: 'Ne pas aller chercher les enfants à l’école : ils y sont protégés.', en: 'Don’t collect children from school — they are protected there.' },
+    { fr: 'Ne pas téléphoner sauf urgence vitale : les réseaux sont saturés.', en: 'Don’t phone except for a life-threatening emergency — networks are saturated.' },
+    { fr: 'Ne pas s’approcher du feu ni des zones sinistrées.', en: 'Don’t go near the fire or the affected areas.' },
+    { fr: 'Aucune flamme, cigarette ou barbecue à proximité.', en: 'No flame, cigarette or barbecue nearby.' },
+  ],
+  emergency:    { fr: 'Numéros d’urgence', en: 'Emergency numbers' },
+  em_fire:      { fr: 'Pompiers', en: 'Fire brigade' },
+  em_eu:        { fr: 'Urgences (UE)', en: 'Emergencies (EU)' },
+  em_deaf:      { fr: 'SMS sourds/malentendants', en: 'SMS deaf / hard of hearing' },
+  aid_cta:      { fr: 'Accueil des évacués & dons', en: 'Evacuee support & donations' },
+  source:       { fr: 'Consignes : préfecture de la Gironde', en: 'Guidance: Gironde prefecture' },
+  close:        { fr: 'J’ai compris', en: 'Got it' },
+  reopen:       { fr: 'Sécurité', en: 'Safety' },
+}
+
+function openSafety() { showSafety.value = true }
+function closeSafety() {
+  showSafety.value = false
+  try { localStorage.setItem(SAFETY_KEY, '1') } catch { /* ignore */ }
+}
 
 let map: any = null
 let fireOverlays: any[] = []
@@ -242,6 +291,16 @@ async function loadStats() {
   try { stats.value = await api('/api/stats') } catch (e) { /* ignore */ }
 }
 
+async function loadPrefecture() {
+  try { prefecture.value = await api('/api/prefecture') } catch (e) { /* keep previous */ }
+}
+
+function prefDate(iso: string) {
+  if (!iso) return ''
+  const [y, m, d] = iso.split('-')
+  return d && m ? `${d}/${m}` : iso
+}
+
 // ---- reactions -------------------------------------------------------------
 watch(days, () => { refreshFires(); loadStats() })
 watch(() => layers.fires, toggleFiresLayer)
@@ -251,10 +310,12 @@ watch(() => layers.risk, toggleRiskLayer)
 const periodLabel = computed(() => (days.value === 1 ? '24h' : days.value === 2 ? '48h' : '7d'))
 
 onMounted(async () => {
+  try { if (!localStorage.getItem(SAFETY_KEY)) showSafety.value = true } catch { showSafety.value = true }
+  loadPrefecture()
   await loadStats()
   await initMap()
   // periodic refresh every 5 min
-  setInterval(() => { refreshFires(); loadStats() }, 300000)
+  setInterval(() => { refreshFires(); loadStats(); loadPrefecture() }, 300000)
 })
 </script>
 
@@ -296,8 +357,9 @@ onMounted(async () => {
       </button>
     </header>
 
-    <!-- Left control panel (desktop) -->
-    <div class="absolute left-4 top-20 z-20 hidden w-64 rounded-2xl glass p-4 md:block">
+    <!-- Left control column (desktop) -->
+    <div class="absolute left-4 top-20 z-20 hidden max-h-[calc(100dvh-6rem)] w-64 space-y-2.5 overflow-y-auto scroll-thin md:block">
+    <div class="rounded-2xl glass p-4">
       <h2 class="mb-3 flex items-center gap-2 text-sm font-bold text-amber-50">
         <svg class="h-4 w-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/></svg>
         {{ t('layers') }}
@@ -331,6 +393,52 @@ onMounted(async () => {
           </button>
         </div>
       </div>
+    </div>
+
+    <!-- Préfecture live feed (desktop) -->
+    <div class="rounded-2xl glass p-4">
+      <div class="mb-2.5 flex items-center justify-between gap-2">
+        <h2 class="flex items-center gap-1.5 text-sm font-bold text-amber-50">
+          <span v-if="prefecture && !prefecture.stale" class="relative flex h-2 w-2">
+            <span class="live-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+            <span class="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+          </span>
+          {{ t('pref_title') }}
+        </h2>
+        <span v-if="prefecture" class="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
+              :class="prefecture.stale ? 'bg-amber-500/15 text-amber-300' : 'bg-red-500/15 text-red-300'">
+          {{ prefecture.stale ? `${t('pref_snapshot')} ${prefDate(prefecture.as_of)}` : t('pref_live') }}
+        </span>
+      </div>
+
+      <template v-if="prefecture && prefecture.items && prefecture.items.length">
+        <div v-if="prefecture.evacuated && prefecture.evacuated.length" class="mb-3">
+          <p class="mb-1.5 text-[11px] font-semibold text-orange-300">{{ t('pref_evac') }}</p>
+          <div class="flex flex-wrap gap-1">
+            <span v-for="c in prefecture.evacuated" :key="c"
+                  class="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-100">{{ c }}</span>
+          </div>
+          <p class="mt-1.5 text-[9px] leading-tight text-amber-200/40">{{ t('pref_evac_note') }}</p>
+        </div>
+
+        <p class="mb-1.5 text-[11px] font-semibold text-amber-200/70">{{ t('pref_updates') }}</p>
+        <ul class="space-y-2">
+          <li v-for="(it, i) in prefecture.items" :key="i">
+            <a :href="it.url" target="_blank" rel="noopener" class="group flex gap-2">
+              <span class="mt-px shrink-0 rounded bg-white/5 px-1.5 py-0.5 text-[9px] font-semibold tabular-nums text-amber-200/70">{{ prefDate(it.date) }}</span>
+              <span class="line-clamp-2 text-[11px] leading-snug text-amber-50/85 transition group-hover:text-amber-50">{{ it.title }}</span>
+            </a>
+          </li>
+        </ul>
+        <a :href="prefecture.source_url" target="_blank" rel="noopener"
+           class="mt-2.5 inline-flex items-center gap-1 text-[10px] font-semibold text-amber-300 transition hover:text-amber-200">{{ t('pref_all') }} →</a>
+      </template>
+      <p v-else class="text-[11px] leading-snug text-amber-200/50">
+        {{ t('pref_empty') }}
+        <a :href="(prefecture && prefecture.source_url) || 'https://www.gironde.gouv.fr/'" target="_blank" rel="noopener"
+           class="text-amber-300 underline transition hover:text-amber-200">{{ t('pref_source') }} →</a>
+      </p>
+    </div>
     </div>
 
     <!-- Right stat cards (desktop) -->
@@ -406,6 +514,120 @@ onMounted(async () => {
       {{ t('loading') }}
     </div>
 
+    <!-- Safety-notice trigger (persistent) -->
+    <button
+      @click="openSafety"
+      class="group absolute left-3 top-3 z-40 flex items-center gap-1.5 rounded-full border border-red-500/40 bg-red-950/50 px-2.5 py-1.5 text-xs font-semibold text-red-100 backdrop-blur-md transition hover:bg-red-900/60 md:left-4 md:top-4 md:px-3 md:py-2"
+      :aria-label="L(safety.reopen)"
+    >
+      <span class="relative flex h-2 w-2">
+        <span class="live-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+        <span class="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+      </span>
+      <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 fill-none stroke-current" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      <span>{{ L(safety.reopen) }}</span>
+    </button>
+
+    <!-- ===== Safety notice modal ===== -->
+    <transition name="modal">
+      <div
+        v-if="showSafety"
+        class="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 p-3 backdrop-blur-sm sm:items-center sm:p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="safety-title"
+        @click.self="closeSafety"
+      >
+        <div class="safety-card relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl">
+          <!-- top accent -->
+          <div class="h-1 w-full shrink-0" style="background:linear-gradient(90deg,#ef4444,#fb923c,#ef4444)"></div>
+
+          <button
+            @click="closeSafety"
+            class="absolute right-3 top-3 z-10 grid h-7 w-7 place-items-center rounded-full text-amber-200/60 transition hover:bg-white/10 hover:text-amber-50"
+            :aria-label="lang === 'fr' ? 'Fermer' : 'Close'"
+          >✕</button>
+
+          <div class="flex-1 overflow-y-auto scroll-thin px-5 py-4 sm:px-6 sm:py-5">
+            <!-- header -->
+            <div class="flex items-center gap-2">
+              <span class="relative flex h-2.5 w-2.5">
+                <span class="live-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500"></span>
+              </span>
+              <span class="text-[11px] font-bold uppercase tracking-wider text-red-300">{{ L(safety.badge) }}</span>
+              <span class="text-[11px] font-medium text-amber-200/60">— {{ L(safety.region) }}</span>
+            </div>
+            <h2 id="safety-title" class="mt-1.5 text-xl font-extrabold tracking-tight text-amber-50">{{ L(safety.title) }}</h2>
+            <p class="mt-1 text-sm leading-snug text-amber-100/70">{{ L(safety.intro) }}</p>
+
+            <!-- do / don't -->
+            <div class="mt-4 grid gap-3 sm:grid-cols-2">
+              <div class="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.07] p-3.5">
+                <h3 class="mb-2 flex items-center gap-1.5 text-sm font-bold text-emerald-300">
+                  <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>
+                  {{ L(safety.do_h) }}
+                </h3>
+                <ul class="space-y-1.5">
+                  <li v-for="(item, i) in safety.do" :key="'do'+i" class="flex gap-2 text-[13px] leading-snug text-amber-50/90">
+                    <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-400"></span>
+                    <span>{{ L(item) }}</span>
+                  </li>
+                </ul>
+              </div>
+              <div class="rounded-xl border border-red-500/25 bg-red-500/[0.07] p-3.5">
+                <h3 class="mb-2 flex items-center gap-1.5 text-sm font-bold text-red-300">
+                  <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                  {{ L(safety.dont_h) }}
+                </h3>
+                <ul class="space-y-1.5">
+                  <li v-for="(item, i) in safety.dont" :key="'dont'+i" class="flex gap-2 text-[13px] leading-snug text-amber-50/90">
+                    <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-red-400"></span>
+                    <span>{{ L(item) }}</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- emergency numbers -->
+            <div class="mt-3 rounded-xl border border-amber-500/20 bg-white/[0.03] p-3.5">
+              <h3 class="mb-2 text-[11px] font-bold uppercase tracking-wider text-amber-200/70">{{ L(safety.emergency) }}</h3>
+              <div class="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <p class="text-2xl font-extrabold leading-none text-amber-50">18</p>
+                  <p class="mt-1 text-[10px] leading-tight text-amber-200/60">{{ L(safety.em_fire) }}</p>
+                </div>
+                <div class="border-x border-amber-500/15">
+                  <p class="text-2xl font-extrabold leading-none text-amber-50">112</p>
+                  <p class="mt-1 text-[10px] leading-tight text-amber-200/60">{{ L(safety.em_eu) }}</p>
+                </div>
+                <div>
+                  <p class="text-2xl font-extrabold leading-none text-amber-50">114</p>
+                  <p class="mt-1 text-[10px] leading-tight text-amber-200/60">{{ L(safety.em_deaf) }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- footer actions -->
+          <div class="flex shrink-0 flex-col gap-2 border-t border-amber-500/15 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <a
+              :href="AID_URL" target="_blank" rel="noopener"
+              class="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-red-500 px-4 py-2 text-xs font-bold text-black transition hover:brightness-110"
+            >
+              <span class="text-sm">♥</span> {{ L(safety.aid_cta) }}
+            </a>
+            <button
+              @click="closeSafety"
+              class="rounded-full border border-amber-500/30 px-4 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/15"
+            >
+              {{ L(safety.close) }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
     <!-- ===== Mobile bottom sheet ===== -->
     <div class="absolute inset-x-0 bottom-0 z-30 md:hidden">
       <div class="glass rounded-t-2xl px-4 pt-1.5" style="padding-bottom:calc(env(safe-area-inset-bottom) + 0.5rem)">
@@ -436,6 +658,37 @@ onMounted(async () => {
 
         <!-- expanded controls -->
         <div v-show="sheet" class="mt-3 space-y-4 pb-1">
+          <!-- préfecture live feed -->
+          <div v-if="prefecture && prefecture.items && prefecture.items.length" class="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-3">
+            <div class="mb-2 flex items-center gap-1.5">
+              <span v-if="!prefecture.stale" class="relative flex h-2 w-2">
+                <span class="live-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span class="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+              </span>
+              <h3 class="text-xs font-bold text-amber-50">{{ t('pref_title') }}</h3>
+              <span class="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
+                    :class="prefecture.stale ? 'bg-amber-500/15 text-amber-300' : 'bg-red-500/15 text-red-300'">
+                {{ prefecture.stale ? `${t('pref_snapshot')} ${prefDate(prefecture.as_of)}` : t('pref_live') }}
+              </span>
+            </div>
+            <div v-if="prefecture.evacuated && prefecture.evacuated.length" class="mb-2.5">
+              <p class="mb-1 text-[10px] font-semibold text-orange-300">{{ t('pref_evac') }}</p>
+              <div class="flex flex-wrap gap-1">
+                <span v-for="c in prefecture.evacuated" :key="'m'+c"
+                      class="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-100">{{ c }}</span>
+              </div>
+            </div>
+            <ul class="space-y-1.5">
+              <li v-for="(it, i) in prefecture.items.slice(0, 4)" :key="'mp'+i">
+                <a :href="it.url" target="_blank" rel="noopener" class="flex gap-2">
+                  <span class="mt-px shrink-0 rounded bg-white/5 px-1.5 py-0.5 text-[9px] font-semibold tabular-nums text-amber-200/70">{{ prefDate(it.date) }}</span>
+                  <span class="line-clamp-2 text-[11px] leading-snug text-amber-50/85">{{ it.title }}</span>
+                </a>
+              </li>
+            </ul>
+            <a :href="prefecture.source_url" target="_blank" rel="noopener"
+               class="mt-2 inline-flex text-[10px] font-semibold text-amber-300">{{ t('pref_all') }} →</a>
+          </div>
           <!-- layers -->
           <div class="space-y-2.5">
             <label v-for="l in [['fires','layer_fires','#fb923c'],['danger','layer_danger','#f97316'],['risk','layer_risk','#22c55e']]"
@@ -495,4 +748,21 @@ onMounted(async () => {
 <style>
 .fade-enter-active, .fade-leave-active { transition: opacity .2s, transform .2s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(8px); }
+
+/* safety modal — a text-heavy panel needs a near-opaque backing over satellite */
+.safety-card {
+  background: linear-gradient(180deg, rgba(22, 12, 12, 0.97), rgba(10, 8, 12, 0.97));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(251, 146, 60, 0.22);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(239, 68, 68, 0.08);
+}
+.modal-enter-active, .modal-leave-active { transition: opacity .25s ease; }
+.modal-enter-active .safety-card, .modal-leave-active .safety-card { transition: opacity .25s ease, transform .25s cubic-bezier(0.16, 1, 0.3, 1); }
+.modal-enter-from, .modal-leave-to { opacity: 0; }
+.modal-enter-from .safety-card, .modal-leave-to .safety-card { opacity: 0; transform: translateY(16px) scale(0.98); }
+@media (prefers-reduced-motion: reduce) {
+  .modal-enter-active, .modal-leave-active,
+  .modal-enter-active .safety-card, .modal-leave-active .safety-card { transition: none; }
+}
 </style>

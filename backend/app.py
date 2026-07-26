@@ -18,9 +18,11 @@ Data sources
 """
 import csv
 import gzip
+import html as _html
 import io
 import math
 import os
+import re
 import threading
 import time
 
@@ -56,6 +58,42 @@ MDF_CSV_GZ   = "https://object.files.data.gouv.fr/meteofrance/data/BULLETIN/MDF/
 MDF_GEOJSON  = "https://static.data.gouv.fr/resources/archive-meteo-des-forets/20251218-123448/departements.geojson"
 
 UA = {"User-Agent": "FirePort/1.0 (+https://fireport.cyclooo.fr)"}
+
+# Préfecture de la Gironde — official press releases (live situation updates).
+# Overridable via env so the current month / département stay config-driven.
+PREF_BASE  = os.environ.get("PREF_BASE", "https://www.gironde.gouv.fr")
+PREF_INDEX = os.environ.get(
+    "PREF_INDEX",
+    "/Actualites/Communiques-de-presse/Communiques-de-presse-2026/Juillet-2026",
+)
+PREF_KEYWORDS = re.compile(r"incendie|feu[x]?\b|saumos|évacu|evacu|fr-alert|vigilance", re.I)
+_PREF_COMMUNE_RE = re.compile(r"communes?\s+(?:de|du|des|d’|d')\s+(.+?)(?:\s*[:–-]|$)", re.I)
+
+# The préfecture site (DataDome) drops requests from datacenter IPs, so a live
+# scrape usually fails from the VPS. This is a hand-verified snapshot of the
+# official communiqués used as a fallback — clearly flagged `stale` with an
+# `as_of` date and always shown alongside the live source link.
+_PREF_FALLBACK_URL = PREF_BASE + PREF_INDEX + "/"
+PREF_FALLBACK = {
+    "as_of": "2026-07-26",
+    "evacuated": ["Saint-Aubin-de-Médoc", "Saint-Médard-en-Jalles", "Martignas-sur-Jalle",
+                  "Saint-Jean-d’Illac", "Le Haillan", "Eysines (ext. rocade)",
+                  "Mérignac (ext. rocade)", "Marcheprime", "Le Barp", "Biganos", "Mios", "Cestas"],
+    "items": [
+        {"title": "Incendie de Gironde : point de situation à 2h ce dimanche 26 juillet",
+         "date": "2026-07-26", "url": _PREF_FALLBACK_URL + "Incendie-de-Gironde-point-de-situation-a-2h-ce-dimanche-26-juillet"},
+        {"title": "Incendie en Gironde : déclenchement de FR-Alert pour l’évacuation des nouvelles communes",
+         "date": "2026-07-25", "url": _PREF_FALLBACK_URL + "Incendie-en-Gironde-declenchement-de-FR-Alert-pour-l-evacuation-des-nouvelles-communes"},
+        {"title": "FR-Alert pour l’évacuation des communes du Haillan, Eysines ext rocade et Mérignac ext rocade",
+         "date": "2026-07-25", "url": _PREF_FALLBACK_URL + "FR-Alert-pour-l-evacuation-des-communes-du-Haillan-Eysines-ext-rocade-et-Merignac-ext-rocade"},
+        {"title": "Incendie de Saumos : point de situation à 21h ce samedi 25 juillet",
+         "date": "2026-07-25", "url": _PREF_FALLBACK_URL + "Incendie-de-Saumos-point-de-situation-a-21h-ce-samedi-25-juillet"},
+        {"title": "Évacuations des communes de Marcheprime, Le Barp, Biganos, Mios, Cestas",
+         "date": "2026-07-25", "url": _PREF_FALLBACK_URL + "Evacuations-des-communes-de-Marcheprime-Le-Barp-Biganos-Mios-Cestas"},
+        {"title": "Incendie de Saumos : point de situation à 13h ce samedi 25 juillet",
+         "date": "2026-07-25", "url": _PREF_FALLBACK_URL + "Incendie-de-Saumos-point-de-situation-a-13h-ce-samedi-25-juillet"},
+    ],
+}
 
 # --------------------------------------------------------------------------- #
 # Tiny thread-safe TTL cache
@@ -375,6 +413,95 @@ def stats():
             "promethee": "https://www.promethee.com/",
         },
     })
+
+
+# --------------------------------------------------------------------------- #
+# Préfecture de la Gironde — live official communiqués + evacuated communes
+# Scrapes the DSFR "communiqués de presse" listing (title + date + link). Best
+# effort: any failure returns an empty feed so the panel degrades gracefully to
+# its link-out. Titles/URLs are official; the evacuated-commune list is derived
+# from evacuation communiqué titles and is advisory (verify at the source).
+# --------------------------------------------------------------------------- #
+def _pref_cards(page_html):
+    titles = re.findall(r'class="fr-card__link"\s+href="([^"]+)"[^>]*>(.*?)</a>', page_html, re.S)
+    dates = re.findall(r'fr-card__detail[^>]*>(.*?)</p>', page_html, re.S)
+    out = []
+    for i, (href, txt) in enumerate(titles):
+        title = _html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", txt))).strip()
+        raw = _html.unescape(re.sub(r"<[^>]+>", " ", dates[i])) if i < len(dates) else ""
+        m = re.search(r"(\d{2})/(\d{2})/(\d{4})", raw)
+        iso = f"{m.group(3)}-{m.group(2)}-{m.group(1)}" if m else ""
+        url = href if href.startswith("http") else PREF_BASE + href
+        if title:
+            out.append({"title": title, "date": iso, "url": url})
+    return out
+
+
+def fetch_prefecture():
+    cached = cache_get("prefecture")
+    if cached is not None:
+        return cached
+    result = {"items": [], "evacuated": [], "source_url": PREF_BASE + PREF_INDEX,
+              "updated": _now_epoch()}
+    try:
+        r = requests.get(PREF_BASE + PREF_INDEX, headers=UA, timeout=15)
+        r.raise_for_status()
+        pages = [r.text]
+        # newest releases live on the last pagination page (list is date-ascending)
+        m = re.search(r'fr-pagination__link--last"[^>]*href="([^"]+)"', r.text)
+        if m:
+            moff = re.search(r"/\(offset\)/(\d+)", _html.unescape(m.group(1)))
+            last_off = int(moff.group(1)) if moff else 0
+            for off in (last_off, last_off - 10):  # cover same-day bursts
+                if off <= 0:
+                    continue
+                rr = requests.get(f"{PREF_BASE}{PREF_INDEX}/(offset)/{off}", headers=UA, timeout=15)
+                if rr.ok:
+                    pages.append(rr.text)
+
+        seen, cards = set(), []
+        for ph in pages:
+            for c in _pref_cards(ph):
+                if c["url"] in seen:
+                    continue
+                seen.add(c["url"])
+                cards.append(c)
+
+        fire = [c for c in cards if PREF_KEYWORDS.search(c["title"])]
+        fire.sort(key=lambda c: c["date"], reverse=True)
+
+        evac = []
+        for c in fire:
+            if re.search(r"évacu|evacu", c["title"], re.I):
+                mm = _PREF_COMMUNE_RE.search(c["title"])
+                if mm:
+                    for n in re.split(r",|\bet\b", mm.group(1)):
+                        n = n.strip(" .")
+                        if n and len(n) < 40 and n.lower() not in [e.lower() for e in evac]:
+                            evac.append(n)
+            if len(evac) >= 8:
+                break
+
+        result["items"] = fire[:6]
+        result["evacuated"] = evac[:8]
+        result["stale"] = False
+    except Exception as exc:  # noqa: BLE001 — degrade to the curated snapshot
+        app.logger.warning("prefecture scrape failed: %s", exc)
+
+    if not result["items"]:
+        # live source unreachable (bot-protected) — serve the verified snapshot
+        result["items"] = PREF_FALLBACK["items"]
+        result["evacuated"] = PREF_FALLBACK["evacuated"]
+        result["as_of"] = PREF_FALLBACK["as_of"]
+        result["stale"] = True
+
+    # short TTL when stale so a source that comes back is picked up quickly
+    return cache_set("prefecture", result, 900 if not result.get("stale") else 300)
+
+
+@app.route("/api/prefecture")
+def prefecture():
+    return jsonify(fetch_prefecture())
 
 
 @app.route("/api/health")

@@ -45,6 +45,15 @@ const DICT: Record<string, { fr: string; en: string }> = {
     en: 'Enable “MapKit JS” for your Apple Maps key and add the site domain in the Apple Developer portal.',
   },
   none_active:    { fr: 'Aucune détection sur la période', en: 'No detection in this period' },
+  pref_title:     { fr: 'Préfecture de la Gironde', en: 'Gironde Prefecture' },
+  pref_live:      { fr: 'en direct', en: 'live' },
+  pref_snapshot:  { fr: 'au', en: 'as of' },
+  pref_evac:      { fr: 'Communes évacuées', en: 'Evacuated communes' },
+  pref_evac_note: { fr: 'D’après les communiqués — vérifiez auprès des autorités.', en: 'From official releases — verify with the authorities.' },
+  pref_updates:   { fr: 'Derniers communiqués', en: 'Latest press releases' },
+  pref_all:       { fr: 'Tous les communiqués', en: 'All press releases' },
+  pref_source:    { fr: 'Préfecture de la Gironde', en: 'Gironde Prefecture' },
+  pref_empty:     { fr: 'Flux momentanément indisponible.', en: 'Feed temporarily unavailable.' },
 }
 
 export function useLang() {
