@@ -320,269 +320,242 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="relative h-[100dvh] w-full overflow-hidden bg-[#07060a]">
+  <div class="relative h-[100dvh] w-full overflow-hidden bg-[var(--base)]">
     <!-- Map -->
     <div ref="mapEl" class="absolute inset-0 z-0"></div>
 
-    <!-- ambient glows (desktop only — blur is GPU-heavy on mobile Safari) -->
-    <div class="pointer-events-none absolute inset-0 z-0 hidden md:block">
-      <div class="ambient-glow absolute left-1/4 top-1/4 h-96 w-96 rounded-full bg-amber-500/10 blur-[120px]"></div>
-      <div class="ambient-glow absolute bottom-1/4 right-1/4 h-96 w-96 rounded-full bg-red-500/10 blur-[120px]" style="animation-delay:-4s"></div>
-    </div>
-
-    <!-- Header -->
-    <header class="absolute left-1/2 top-3 z-40 flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-2 rounded-full glass px-3 py-2 md:top-4 md:gap-3 md:px-5 md:py-2.5">
-      <div class="flex items-center gap-2 md:gap-2.5">
-        <div class="rounded-lg bg-gradient-to-br from-amber-500/30 to-red-500/30 p-1.5">
-          <svg viewBox="0 0 32 32" class="h-5 w-5"><path fill="#fb923c" d="M16 4c1.6 3.4.4 5.6-1.4 7.6-1.9 2.1-4.2 4.3-4.2 7.7A5.6 5.6 0 0 0 16 25a5.6 5.6 0 0 0 5.6-5.7c0-1.7-.7-3-1.5-4.2.2 1.4-.4 2.6-1.3 3.1.6-2.2-.3-4.4-1.7-6.2C15.4 9.8 14.8 6.7 16 4z"/></svg>
-        </div>
-        <div class="leading-tight">
-          <h1 class="text-sm font-extrabold tracking-tight text-amber-50 md:text-base">Fi<span class="text-amber-400">R</span>eport</h1>
-          <p class="hidden text-[10px] text-amber-200/60 sm:block">{{ t('tagline') }}</p>
-        </div>
+    <!-- Header · instrument bar (top-left) -->
+    <header class="instrument-bar absolute left-3 top-3 z-40 flex max-w-[calc(100vw-1.5rem)] items-center gap-2.5 px-3 py-2 md:left-4 md:top-4 md:gap-3 md:px-4">
+      <span class="live-sq shrink-0" aria-hidden="true"></span>
+      <div class="leading-none">
+        <h1 class="text-sm font-bold tracking-tight text-[var(--ink)] md:text-[15px]" style="font-family:var(--font-display)">Fi<span style="color:var(--fire)">R</span>eport</h1>
+        <p class="lbl mt-1 hidden sm:block">{{ t('tagline') }}</p>
       </div>
-      <div class="hidden h-7 w-px bg-amber-500/20 sm:block"></div>
-      <div class="flex items-center gap-1.5 rounded-full bg-red-500/15 px-2.5 py-1 md:gap-2 md:px-3">
-        <span class="relative flex h-2 w-2">
-          <span class="live-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-          <span class="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
-        </span>
-        <span class="whitespace-nowrap text-xs font-semibold text-red-200">
-          {{ stats ? stats.active_24h : '—' }} <span class="hidden sm:inline">{{ t('active_fires') }}</span>
-        </span>
+      <span class="hidden h-7 w-px bg-[var(--line)] sm:block"></span>
+      <div class="flex items-center gap-1.5 rounded-[var(--r-chip)] border border-[var(--line)] bg-[var(--panel-2)] px-2 py-1">
+        <span class="readout text-[13px] leading-none text-[var(--fire)]">{{ stats ? stats.active_24h : '—' }}</span>
+        <span class="lbl hidden sm:block">{{ t('active_fires') }}</span>
       </div>
       <button @click="toggle"
-              class="rounded-full border border-amber-500/30 px-2.5 py-1 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/15">
+              class="mono rounded-[var(--r-chip)] border border-[var(--line)] px-2 py-1 text-[11px] font-bold text-[var(--muted)] transition-colors hover:border-[var(--line-strong)] hover:text-[var(--ink)]">
         {{ lang === 'fr' ? 'EN' : 'FR' }}
       </button>
     </header>
 
     <!-- Left control column (desktop) -->
     <div class="absolute left-4 top-20 z-20 hidden max-h-[calc(100dvh-6rem)] w-64 space-y-2.5 overflow-y-auto scroll-thin md:block">
-    <div class="rounded-2xl glass p-4">
-      <h2 class="mb-3 flex items-center gap-2 text-sm font-bold text-amber-50">
-        <svg class="h-4 w-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/></svg>
-        {{ t('layers') }}
-      </h2>
-      <div class="space-y-2.5">
-        <label v-for="l in [['fires','layer_fires','#fb923c'],['danger','layer_danger','#f97316'],['risk','layer_risk','#22c55e']]"
-               :key="l[0]"
-               class="flex cursor-pointer items-center justify-between">
-          <span class="flex items-center gap-2 text-sm" :class="(layers as any)[l[0]] ? 'text-amber-50' : 'text-amber-200/40'">
-            <span class="h-2.5 w-2.5 rounded-full" :style="{ background: (layers as any)[l[0]] ? (l[2] as string) : 'transparent', boxShadow: (layers as any)[l[0]] ? `0 0 6px ${l[2]}` : 'none', border: '1px solid '+l[2] }"></span>
-            {{ t(l[1] as string) }}
-          </span>
-          <input type="checkbox" v-model="(layers as any)[l[0]]" class="peer sr-only">
-          <span class="relative h-4 w-8 rounded-full bg-white/15 transition peer-checked:bg-amber-500/80">
-            <span class="absolute left-0.5 top-0.5 h-3 w-3 rounded-full bg-white transition" :class="(layers as any)[l[0]] ? 'translate-x-4' : ''"></span>
-          </span>
-        </label>
-      </div>
-
-      <div class="mt-4 border-t border-amber-500/20 pt-3">
-        <h3 class="mb-2 flex items-center gap-2 text-sm font-bold text-amber-50">
-          <svg class="h-4 w-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-          {{ t('period') }}
-        </h3>
-        <div class="grid grid-cols-3 gap-1.5">
-          <button v-for="opt in [[1,'p_24h'],[2,'p_48h'],[5,'p_7d']]" :key="opt[0]"
-                  @click="days = opt[0] as number"
-                  class="rounded-lg px-2 py-1.5 text-xs font-semibold transition"
-                  :class="days === opt[0] ? 'bg-amber-500/80 text-black' : 'bg-white/5 text-amber-200/70 hover:bg-white/10'">
-            {{ t(opt[1] as string) }}
-          </button>
+      <div class="panel p-4">
+        <h2 class="lbl mb-3">{{ t('layers') }}</h2>
+        <div class="space-y-2.5">
+          <label v-for="l in [['fires','layer_fires','#fb923c'],['danger','layer_danger','#f97316'],['risk','layer_risk','#22c55e']]"
+                 :key="l[0]"
+                 class="flex cursor-pointer items-center justify-between">
+            <span class="flex items-center gap-2 text-[13px]" :class="(layers as any)[l[0]] ? 'text-[var(--ink)]' : 'text-[var(--faint)]'">
+              <span class="h-2.5 w-2.5" :style="{ background: (layers as any)[l[0]] ? (l[2] as string) : 'transparent', border: '1px solid '+l[2] }"></span>
+              {{ t(l[1] as string) }}
+            </span>
+            <input type="checkbox" v-model="(layers as any)[l[0]]" class="peer sr-only">
+            <span class="relative h-4 w-8 rounded-full bg-[var(--line-strong)] transition-colors peer-checked:bg-[var(--fire)]">
+              <span class="absolute left-0.5 top-0.5 h-3 w-3 rounded-full bg-[var(--ink)] transition-transform" :class="(layers as any)[l[0]] ? 'translate-x-4' : ''"></span>
+            </span>
+          </label>
         </div>
-      </div>
-    </div>
 
-    <!-- Préfecture live feed (desktop) -->
-    <div class="rounded-2xl glass p-4">
-      <div class="mb-2.5 flex items-center justify-between gap-2">
-        <h2 class="flex items-center gap-1.5 text-sm font-bold text-amber-50">
-          <span v-if="prefecture && !prefecture.stale" class="relative flex h-2 w-2">
-            <span class="live-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-            <span class="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
-          </span>
-          {{ t('pref_title') }}
-        </h2>
-        <span v-if="prefecture" class="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
-              :class="prefecture.stale ? 'bg-amber-500/15 text-amber-300' : 'bg-red-500/15 text-red-300'">
-          {{ prefecture.stale ? `${t('pref_snapshot')} ${prefDate(prefecture.as_of)}` : t('pref_live') }}
-        </span>
-      </div>
-
-      <template v-if="prefecture && prefecture.items && prefecture.items.length">
-        <div v-if="prefecture.evacuated && prefecture.evacuated.length" class="mb-3">
-          <p class="mb-1.5 text-[11px] font-semibold text-orange-300">{{ t('pref_evac') }}</p>
-          <div class="flex flex-wrap gap-1">
-            <span v-for="c in prefecture.evacuated" :key="c"
-                  class="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-100">{{ c }}</span>
+        <div class="mt-4 border-t border-[var(--line)] pt-3">
+          <h3 class="lbl mb-2">{{ t('period') }}</h3>
+          <div class="grid grid-cols-3 gap-1.5">
+            <button v-for="opt in [[1,'p_24h'],[2,'p_48h'],[5,'p_7d']]" :key="opt[0]"
+                    @click="days = opt[0] as number"
+                    class="mono rounded-[var(--r-chip)] border py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors"
+                    :class="days === opt[0] ? 'border-transparent bg-[var(--fire)] text-black' : 'border-[var(--line)] text-[var(--muted)] hover:border-[var(--line-strong)] hover:text-[var(--ink)]'">
+              {{ t(opt[1] as string) }}
+            </button>
           </div>
-          <p class="mt-1.5 text-[9px] leading-tight text-amber-200/40">{{ t('pref_evac_note') }}</p>
+        </div>
+      </div>
+
+      <!-- Préfecture live feed (desktop) -->
+      <div class="panel p-4">
+        <div class="mb-2.5 flex items-center justify-between gap-2">
+          <h2 class="flex items-center gap-1.5 text-[13px] font-bold text-[var(--ink)]" style="font-family:var(--font-display)">
+            <span v-if="prefecture && !prefecture.stale" class="ember-sq" aria-hidden="true"></span>
+            {{ t('pref_title') }}
+          </h2>
+          <span v-if="prefecture" class="mono shrink-0 border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                :class="prefecture.stale ? 'border-[var(--line)] text-[var(--muted)]' : 'border-[var(--fire)]/40 text-[var(--fire)]'"
+                :style="prefecture.stale ? '' : 'border-color:rgba(255,106,26,.4)'">
+            {{ prefecture.stale ? `${t('pref_snapshot')} ${prefDate(prefecture.as_of)}` : t('pref_live') }}
+          </span>
         </div>
 
-        <p class="mb-1.5 text-[11px] font-semibold text-amber-200/70">{{ t('pref_updates') }}</p>
-        <ul class="space-y-2">
-          <li v-for="(it, i) in prefecture.items" :key="i">
-            <a :href="it.url" target="_blank" rel="noopener" class="group flex gap-2">
-              <span class="mt-px shrink-0 rounded bg-white/5 px-1.5 py-0.5 text-[9px] font-semibold tabular-nums text-amber-200/70">{{ prefDate(it.date) }}</span>
-              <span class="line-clamp-2 text-[11px] leading-snug text-amber-50/85 transition group-hover:text-amber-50">{{ it.title }}</span>
-            </a>
-          </li>
-        </ul>
-        <a :href="prefecture.source_url" target="_blank" rel="noopener"
-           class="mt-2.5 inline-flex items-center gap-1 text-[10px] font-semibold text-amber-300 transition hover:text-amber-200">{{ t('pref_all') }} →</a>
-      </template>
-      <p v-else class="text-[11px] leading-snug text-amber-200/50">
-        {{ t('pref_empty') }}
-        <a :href="(prefecture && prefecture.source_url) || 'https://www.gironde.gouv.fr/'" target="_blank" rel="noopener"
-           class="text-amber-300 underline transition hover:text-amber-200">{{ t('pref_source') }} →</a>
-      </p>
-    </div>
+        <template v-if="prefecture && prefecture.items && prefecture.items.length">
+          <div v-if="prefecture.evacuated && prefecture.evacuated.length" class="mb-3">
+            <p class="lbl mb-1.5" style="color:var(--fire)">{{ t('pref_evac') }}</p>
+            <div class="flex flex-wrap gap-1">
+              <span v-for="c in prefecture.evacuated" :key="c"
+                    class="mono px-1.5 py-0.5 text-[10px]"
+                    style="background:rgba(255,106,26,.10);border:1px solid rgba(255,106,26,.28);color:#ffd2b8;border-radius:var(--r-chip)">{{ c }}</span>
+            </div>
+            <p class="mt-1.5 text-[10px] leading-tight text-[var(--faint)]">{{ t('pref_evac_note') }}</p>
+          </div>
+
+          <p class="lbl mb-1.5">{{ t('pref_updates') }}</p>
+          <ul class="space-y-2">
+            <li v-for="(it, i) in prefecture.items" :key="i">
+              <a :href="it.url" target="_blank" rel="noopener" class="group flex gap-2">
+                <span class="mono mt-px shrink-0 border border-[var(--line)] bg-[var(--panel-2)] px-1 py-0.5 text-[9px] text-[var(--muted)]" style="border-radius:4px">{{ prefDate(it.date) }}</span>
+                <span class="line-clamp-2 text-[11px] leading-snug text-[var(--muted)] transition-colors group-hover:text-[var(--ink)]">{{ it.title }}</span>
+              </a>
+            </li>
+          </ul>
+          <a :href="prefecture.source_url" target="_blank" rel="noopener"
+             class="mono mt-2.5 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider transition-colors hover:brightness-125" style="color:var(--fire)">{{ t('pref_all') }} →</a>
+        </template>
+        <p v-else class="text-[11px] leading-snug text-[var(--muted)]">
+          {{ t('pref_empty') }}
+          <a :href="(prefecture && prefecture.source_url) || 'https://www.gironde.gouv.fr/'" target="_blank" rel="noopener"
+             class="underline transition-colors hover:brightness-125" style="color:var(--fire)">{{ t('pref_source') }} →</a>
+        </p>
+      </div>
     </div>
 
-    <!-- Right stat cards (desktop) -->
-    <div class="absolute right-4 top-20 z-20 hidden w-60 space-y-2.5 md:block">
-      <div class="relative overflow-hidden rounded-xl glass p-3.5">
-        <p class="text-[11px] font-medium text-amber-200/60">{{ t('stat_active') }}</p>
-        <p class="text-2xl font-bold text-amber-50">{{ stats ? stats.active_24h : '—' }}</p>
+    <!-- Right stat readouts (desktop) -->
+    <div class="absolute right-4 top-20 z-20 hidden w-56 space-y-2.5 md:block">
+      <div class="panel p-3">
+        <p class="lbl">{{ t('stat_active') }}</p>
+        <p class="readout mt-1.5 text-[26px] leading-none">{{ stats ? stats.active_24h : '—' }}</p>
       </div>
-      <div class="rounded-xl glass p-3.5">
-        <p class="text-[11px] font-medium text-amber-200/60">{{ t('stat_week') }}</p>
-        <p class="text-2xl font-bold text-amber-50">{{ stats ? stats.active_5d : '—' }}</p>
+      <div class="panel p-3">
+        <p class="lbl">{{ t('stat_week') }}</p>
+        <p class="readout mt-1.5 text-[26px] leading-none">{{ stats ? stats.active_5d : '—' }}</p>
       </div>
-      <div class="rounded-xl glass p-3.5">
-        <p class="text-[11px] font-medium text-amber-200/60">{{ t('stat_high') }}</p>
-        <p class="text-2xl font-bold text-orange-300">{{ stats ? stats.high_risk_departments : '—' }}<span v-if="stats && stats.extreme_risk_departments" class="ml-1 text-sm text-red-400">({{ stats.extreme_risk_departments }} ⚠)</span></p>
+      <div class="panel p-3">
+        <p class="lbl">{{ t('stat_high') }}</p>
+        <p class="readout mt-1.5 text-[26px] leading-none">{{ stats ? stats.high_risk_departments : '—' }}<span v-if="stats && stats.extreme_risk_departments" class="mono ml-1.5 text-[13px]" style="color:var(--fire-hot)">+{{ stats.extreme_risk_departments }} ⚠</span></p>
       </div>
-      <div class="rounded-xl glass p-3.5">
-        <p class="text-[11px] font-medium text-amber-200/60">{{ t('stat_maxfrp') }}</p>
-        <p class="text-2xl font-bold text-amber-50">{{ stats ? stats.max_frp : '—' }} <span class="text-xs font-normal text-amber-200/50">MW</span></p>
+      <div class="panel p-3">
+        <p class="lbl">{{ t('stat_maxfrp') }}</p>
+        <p class="readout mt-1.5 text-[26px] leading-none">{{ stats ? stats.max_frp : '—' }} <span class="mono text-[12px] font-normal text-[var(--muted)]">MW</span></p>
       </div>
     </div>
 
     <!-- Legend (desktop, bottom-right) -->
-    <div class="absolute bottom-16 right-4 z-20 hidden rounded-xl glass p-3 md:block">
-      <h3 class="mb-2 text-[11px] font-bold text-amber-50">{{ layers.risk ? t('legend_risk') : t('legend_fires') }}</h3>
+    <div class="panel absolute bottom-16 right-4 z-20 hidden p-3 md:block">
+      <h3 class="lbl mb-2">{{ layers.risk ? t('legend_risk') : t('legend_fires') }}</h3>
       <div v-if="!layers.risk" class="flex items-center gap-2">
-        <span class="text-[10px] text-amber-200/70">{{ t('legend_low') }}</span>
-        <span class="h-2 w-24 rounded-full" style="background:linear-gradient(90deg,#fb923c,#ef4444,#b91c1c)"></span>
-        <span class="text-[10px] text-amber-200/70">{{ t('legend_high') }}</span>
+        <span class="lbl">{{ t('legend_low') }}</span>
+        <span class="h-1.5 w-24" style="background:linear-gradient(90deg,#fb923c,#ef4444,#b91c1c)"></span>
+        <span class="lbl">{{ t('legend_high') }}</span>
       </div>
       <div v-else class="space-y-1">
         <div v-for="(lab,i) in ['risk_1','risk_2','risk_3','risk_4']" :key="lab" class="flex items-center gap-2">
-          <span class="h-3 w-3 rounded" :style="{ background: RISK_COLORS[i+1] }"></span>
-          <span class="text-[10px] text-amber-200/80">{{ t(lab) }}</span>
+          <span class="h-2.5 w-2.5" :style="{ background: RISK_COLORS[i+1] }"></span>
+          <span class="text-[11px] text-[var(--muted)]">{{ t(lab) }}</span>
         </div>
       </div>
     </div>
 
     <!-- Selected detection (bottom-left) -->
     <transition name="fade">
-      <div v-if="selected" class="absolute left-2 right-2 top-[4.75rem] z-40 rounded-xl glass p-4 md:left-4 md:right-auto md:top-auto md:bottom-16 md:w-64">
-        <div class="mb-2 flex items-center justify-between">
-          <h3 class="text-xs font-bold text-amber-50">{{ t('sel_title') }}</h3>
-          <button @click="selected = null" class="text-amber-200/50 hover:text-amber-100">✕</button>
+      <div v-if="selected" class="panel absolute left-2 right-2 top-[4.75rem] z-40 p-4 md:left-4 md:right-auto md:top-auto md:bottom-16 md:w-64">
+        <div class="mb-2.5 flex items-center justify-between">
+          <h3 class="lbl">{{ t('sel_title') }}</h3>
+          <button @click="selected = null" class="text-[var(--faint)] transition-colors hover:text-[var(--ink)]">✕</button>
         </div>
-        <dl class="space-y-1 text-xs">
-          <div class="flex justify-between"><dt class="text-amber-200/60">{{ t('sel_frp') }}</dt><dd class="font-semibold text-amber-50">{{ selected.frp }} MW</dd></div>
-          <div class="flex justify-between"><dt class="text-amber-200/60">{{ t('sel_conf') }}</dt><dd class="font-semibold text-amber-50">{{ t('conf_' + selected.confidence) }}</dd></div>
-          <div class="flex justify-between"><dt class="text-amber-200/60">{{ t('sel_sat') }}</dt><dd class="font-semibold text-amber-50">{{ selected.instrument }} {{ selected.satellite }}</dd></div>
-          <div class="flex justify-between"><dt class="text-amber-200/60">{{ t('sel_when') }}</dt><dd class="font-semibold text-amber-50">{{ selected.acq_date }}</dd></div>
-          <div class="pt-1 text-[10px] text-amber-200/40">{{ selected.lat.toFixed(3) }}, {{ selected.lon.toFixed(3) }}</div>
+        <dl class="space-y-1.5 text-[12px]">
+          <div class="flex items-baseline justify-between gap-3"><dt class="lbl">{{ t('sel_frp') }}</dt><dd class="mono font-bold text-[var(--ink)]">{{ selected.frp }} MW</dd></div>
+          <div class="flex items-baseline justify-between gap-3"><dt class="lbl">{{ t('sel_conf') }}</dt><dd class="mono font-bold text-[var(--ink)]">{{ t('conf_' + selected.confidence) }}</dd></div>
+          <div class="flex items-baseline justify-between gap-3"><dt class="lbl">{{ t('sel_sat') }}</dt><dd class="mono font-bold text-[var(--ink)]">{{ selected.instrument }} {{ selected.satellite }}</dd></div>
+          <div class="flex items-baseline justify-between gap-3"><dt class="lbl">{{ t('sel_when') }}</dt><dd class="mono font-bold text-[var(--ink)]">{{ selected.acq_date }}</dd></div>
+          <div class="mono pt-1 text-[10px] text-[var(--faint)]">{{ selected.lat.toFixed(3) }}, {{ selected.lon.toFixed(3) }}</div>
         </dl>
       </div>
     </transition>
 
     <!-- Footer (desktop) -->
-    <footer class="absolute bottom-4 left-1/2 z-30 hidden -translate-x-1/2 items-center gap-3 rounded-full glass px-5 py-2 md:flex">
-      <p class="text-xs text-amber-200/80">
-        Made with <span class="text-red-400">♥</span> by <span class="font-semibold text-amber-50">Cycl0o0</span>
+    <footer class="instrument-bar absolute bottom-4 left-1/2 z-30 hidden -translate-x-1/2 items-center gap-3 px-4 py-2 md:flex">
+      <p class="mono text-[11px] text-[var(--muted)]">
+        Made with <span style="color:var(--fire)">♥</span> by <span class="font-bold text-[var(--ink)]">Cycl0o0</span>
       </p>
-      <span class="h-4 w-px bg-amber-500/20"></span>
+      <span class="h-4 w-px bg-[var(--line)]"></span>
       <a href="https://github.com/Cycl0o0/FiReport" target="_blank" rel="noopener"
-         class="flex items-center gap-1 text-xs text-amber-200/80 transition hover:text-amber-50" aria-label="Source on GitHub">
+         class="mono flex items-center gap-1 text-[11px] text-[var(--muted)] transition-colors hover:text-[var(--ink)]" aria-label="Source on GitHub">
         <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 fill-current"><path d="M12 .5C5.7.5.5 5.7.5 12a11.5 11.5 0 0 0 7.9 10.9c.6.1.8-.2.8-.5v-1.7c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17 4.6 18 4.9 18 4.9c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.6.8.5A11.5 11.5 0 0 0 23.5 12C23.5 5.7 18.3.5 12 .5Z"/></svg>
         Source
       </a>
-      <span class="h-4 w-px bg-amber-500/20"></span>
-      <span class="text-[10px] text-amber-200/50">{{ t('updated') }} {{ fmtTime(lastUpdate) }}</span>
+      <span class="h-4 w-px bg-[var(--line)]"></span>
+      <span class="mono text-[10px] text-[var(--faint)]">{{ t('updated') }} {{ fmtTime(lastUpdate) }}</span>
     </footer>
 
     <!-- loading hint (desktop) -->
-    <div v-if="loading && mapReady" class="absolute bottom-4 left-4 z-30 hidden rounded-full glass px-3 py-1 text-[10px] text-amber-200/70 md:block">
-      {{ t('loading') }}
+    <div v-if="loading && mapReady" class="instrument-bar absolute bottom-4 left-4 z-30 hidden px-3 py-1.5 md:block">
+      <span class="lbl">{{ t('loading') }}</span>
     </div>
 
-    <!-- Safety-notice trigger (persistent) -->
+    <!-- Safety-notice trigger (persistent, top-right) -->
     <button
       @click="openSafety"
-      class="group absolute left-3 top-3 z-40 flex items-center gap-1.5 rounded-full border border-red-500/40 bg-red-950/50 px-2.5 py-1.5 text-xs font-semibold text-red-100 backdrop-blur-md transition hover:bg-red-900/60 md:left-4 md:top-4 md:px-3 md:py-2"
+      class="absolute right-3 top-3 z-40 flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-bold transition-colors md:right-4 md:top-4 md:px-3 md:py-2"
+      style="background:rgba(16,19,23,.85);border:1px solid rgba(255,106,26,.5);border-radius:var(--r-chip);color:var(--fire);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)"
       :aria-label="L(safety.reopen)"
     >
-      <span class="relative flex h-2 w-2">
-        <span class="live-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-        <span class="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
-      </span>
+      <span class="ember-sq" aria-hidden="true"></span>
       <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 fill-none stroke-current" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-      <span>{{ L(safety.reopen) }}</span>
+      <span class="mono uppercase tracking-wider">{{ L(safety.reopen) }}</span>
     </button>
 
     <!-- ===== Safety notice modal ===== -->
     <transition name="modal">
       <div
         v-if="showSafety"
-        class="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 p-3 backdrop-blur-sm sm:items-center sm:p-4"
+        class="fixed inset-0 z-[100] flex items-end justify-center bg-black/75 p-3 backdrop-blur-sm sm:items-center sm:p-4"
         role="dialog"
         aria-modal="true"
         aria-labelledby="safety-title"
         @click.self="closeSafety"
       >
-        <div class="safety-card relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl">
+        <div class="safety-card relative flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden">
           <!-- top accent -->
-          <div class="h-1 w-full shrink-0" style="background:linear-gradient(90deg,#ef4444,#fb923c,#ef4444)"></div>
+          <div class="h-0.5 w-full shrink-0" style="background:linear-gradient(90deg,var(--fire),var(--fire-hot))"></div>
 
           <button
             @click="closeSafety"
-            class="absolute right-3 top-3 z-10 grid h-7 w-7 place-items-center rounded-full text-amber-200/60 transition hover:bg-white/10 hover:text-amber-50"
+            class="absolute right-3 top-3 z-10 grid h-7 w-7 place-items-center text-[var(--faint)] transition-colors hover:text-[var(--ink)]"
             :aria-label="lang === 'fr' ? 'Fermer' : 'Close'"
           >✕</button>
 
-          <div class="flex-1 overflow-y-auto scroll-thin px-5 py-4 sm:px-6 sm:py-5">
+          <div class="flex-1 overflow-y-auto scroll-thin px-5 py-5 sm:px-6">
             <!-- header -->
             <div class="flex items-center gap-2">
-              <span class="relative flex h-2.5 w-2.5">
-                <span class="live-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-                <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500"></span>
-              </span>
-              <span class="text-[11px] font-bold uppercase tracking-wider text-red-300">{{ L(safety.badge) }}</span>
-              <span class="text-[11px] font-medium text-amber-200/60">— {{ L(safety.region) }}</span>
+              <span class="ember-sq" aria-hidden="true"></span>
+              <span class="mono text-[11px] font-bold uppercase tracking-wider" style="color:var(--fire)">{{ L(safety.badge) }}</span>
+              <span class="lbl">— {{ L(safety.region) }}</span>
             </div>
-            <h2 id="safety-title" class="mt-1.5 text-xl font-extrabold tracking-tight text-amber-50">{{ L(safety.title) }}</h2>
-            <p class="mt-1 text-sm leading-snug text-amber-100/70">{{ L(safety.intro) }}</p>
+            <h2 id="safety-title" class="mt-2 text-2xl font-bold tracking-tight text-[var(--ink)]" style="font-family:var(--font-display)">{{ L(safety.title) }}</h2>
+            <p class="mt-1.5 text-[14px] leading-snug text-[var(--muted)]">{{ L(safety.intro) }}</p>
 
             <!-- do / don't -->
             <div class="mt-4 grid gap-3 sm:grid-cols-2">
-              <div class="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.07] p-3.5">
-                <h3 class="mb-2 flex items-center gap-1.5 text-sm font-bold text-emerald-300">
+              <div class="p-3.5" style="background:var(--panel-2);border:1px solid rgba(34,197,94,.32);border-radius:var(--r-panel)">
+                <h3 class="mono mb-2.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider" style="color:var(--ok)">
                   <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>
                   {{ L(safety.do_h) }}
                 </h3>
-                <ul class="space-y-1.5">
-                  <li v-for="(item, i) in safety.do" :key="'do'+i" class="flex gap-2 text-[13px] leading-snug text-amber-50/90">
-                    <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-emerald-400"></span>
+                <ul class="space-y-2">
+                  <li v-for="(item, i) in safety.do" :key="'do'+i" class="flex gap-2 text-[13px] leading-snug text-[var(--ink)]">
+                    <span class="mt-1.5 h-1.5 w-1.5 shrink-0" style="background:var(--ok)"></span>
                     <span>{{ L(item) }}</span>
                   </li>
                 </ul>
               </div>
-              <div class="rounded-xl border border-red-500/25 bg-red-500/[0.07] p-3.5">
-                <h3 class="mb-2 flex items-center gap-1.5 text-sm font-bold text-red-300">
+              <div class="p-3.5" style="background:var(--panel-2);border:1px solid rgba(239,68,68,.32);border-radius:var(--r-panel)">
+                <h3 class="mono mb-2.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider" style="color:var(--fire-hot)">
                   <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                   {{ L(safety.dont_h) }}
                 </h3>
-                <ul class="space-y-1.5">
-                  <li v-for="(item, i) in safety.dont" :key="'dont'+i" class="flex gap-2 text-[13px] leading-snug text-amber-50/90">
-                    <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-red-400"></span>
+                <ul class="space-y-2">
+                  <li v-for="(item, i) in safety.dont" :key="'dont'+i" class="flex gap-2 text-[13px] leading-snug text-[var(--ink)]">
+                    <span class="mt-1.5 h-1.5 w-1.5 shrink-0" style="background:var(--fire-hot)"></span>
                     <span>{{ L(item) }}</span>
                   </li>
                 </ul>
@@ -590,36 +563,38 @@ onMounted(async () => {
             </div>
 
             <!-- emergency numbers -->
-            <div class="mt-3 rounded-xl border border-amber-500/20 bg-white/[0.03] p-3.5">
-              <h3 class="mb-2 text-[11px] font-bold uppercase tracking-wider text-amber-200/70">{{ L(safety.emergency) }}</h3>
+            <div class="mt-3 p-3.5" style="background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r-panel)">
+              <h3 class="lbl mb-2.5">{{ L(safety.emergency) }}</h3>
               <div class="grid grid-cols-3 gap-2 text-center">
                 <div>
-                  <p class="text-2xl font-extrabold leading-none text-amber-50">18</p>
-                  <p class="mt-1 text-[10px] leading-tight text-amber-200/60">{{ L(safety.em_fire) }}</p>
+                  <p class="readout text-2xl leading-none">18</p>
+                  <p class="lbl mt-1.5">{{ L(safety.em_fire) }}</p>
                 </div>
-                <div class="border-x border-amber-500/15">
-                  <p class="text-2xl font-extrabold leading-none text-amber-50">112</p>
-                  <p class="mt-1 text-[10px] leading-tight text-amber-200/60">{{ L(safety.em_eu) }}</p>
+                <div class="border-x border-[var(--line)]">
+                  <p class="readout text-2xl leading-none">112</p>
+                  <p class="lbl mt-1.5">{{ L(safety.em_eu) }}</p>
                 </div>
                 <div>
-                  <p class="text-2xl font-extrabold leading-none text-amber-50">114</p>
-                  <p class="mt-1 text-[10px] leading-tight text-amber-200/60">{{ L(safety.em_deaf) }}</p>
+                  <p class="readout text-2xl leading-none">114</p>
+                  <p class="lbl mt-1.5">{{ L(safety.em_deaf) }}</p>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- footer actions -->
-          <div class="flex shrink-0 flex-col gap-2 border-t border-amber-500/15 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div class="flex shrink-0 flex-col gap-2 border-t border-[var(--line)] px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <a
               :href="AID_URL" target="_blank" rel="noopener"
-              class="inline-flex items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-red-500 px-4 py-2 text-xs font-bold text-black transition hover:brightness-110"
+              class="mono inline-flex items-center justify-center gap-1.5 px-4 py-2 text-[12px] font-bold uppercase tracking-wider text-black transition-[filter] hover:brightness-110"
+              style="background:var(--fire);border-radius:var(--r-chip)"
             >
-              <span class="text-sm">♥</span> {{ L(safety.aid_cta) }}
+              <span class="text-[13px]">♥</span> {{ L(safety.aid_cta) }}
             </a>
             <button
               @click="closeSafety"
-              class="rounded-full border border-amber-500/30 px-4 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/15"
+              class="mono border border-[var(--line-strong)] px-4 py-2 text-[12px] font-bold uppercase tracking-wider text-[var(--muted)] transition-colors hover:text-[var(--ink)]"
+              style="border-radius:var(--r-chip)"
             >
               {{ L(safety.close) }}
             </button>
@@ -630,111 +605,111 @@ onMounted(async () => {
 
     <!-- ===== Mobile bottom sheet ===== -->
     <div class="absolute inset-x-0 bottom-0 z-30 md:hidden">
-      <div class="glass rounded-t-2xl px-4 pt-1.5" style="padding-bottom:calc(env(safe-area-inset-bottom) + 0.5rem)">
+      <div class="px-4 pt-1.5" style="background:var(--panel);border-top:1px solid var(--line);border-top-left-radius:var(--r-panel);border-top-right-radius:var(--r-panel);padding-bottom:calc(env(safe-area-inset-bottom) + 0.5rem)">
         <!-- grab handle -->
         <button @click="sheet = !sheet" class="flex w-full flex-col items-center py-1.5" :aria-expanded="sheet">
-          <span class="h-1 w-10 rounded-full bg-amber-200/40"></span>
+          <span class="h-1 w-10 rounded-full bg-[var(--line-strong)]"></span>
         </button>
 
         <!-- peek: scrolling stat chips -->
         <div class="scroll-thin flex gap-2 overflow-x-auto pb-1">
-          <div class="shrink-0 rounded-xl bg-white/5 px-3 py-1.5">
-            <p class="text-[9px] text-amber-200/60">{{ t('stat_active') }}</p>
-            <p class="text-lg font-bold leading-tight text-amber-50">{{ stats ? stats.active_24h : '—' }}</p>
+          <div class="shrink-0 border border-[var(--line)] bg-[var(--panel-2)] px-3 py-1.5" style="border-radius:var(--r-chip)">
+            <p class="lbl">{{ t('stat_active') }}</p>
+            <p class="readout mt-0.5 text-lg leading-tight">{{ stats ? stats.active_24h : '—' }}</p>
           </div>
-          <div class="shrink-0 rounded-xl bg-white/5 px-3 py-1.5">
-            <p class="text-[9px] text-amber-200/60">{{ t('stat_week') }}</p>
-            <p class="text-lg font-bold leading-tight text-amber-50">{{ stats ? stats.active_5d : '—' }}</p>
+          <div class="shrink-0 border border-[var(--line)] bg-[var(--panel-2)] px-3 py-1.5" style="border-radius:var(--r-chip)">
+            <p class="lbl">{{ t('stat_week') }}</p>
+            <p class="readout mt-0.5 text-lg leading-tight">{{ stats ? stats.active_5d : '—' }}</p>
           </div>
-          <div class="shrink-0 rounded-xl bg-white/5 px-3 py-1.5">
-            <p class="text-[9px] text-amber-200/60">{{ t('stat_high') }}</p>
-            <p class="text-lg font-bold leading-tight text-orange-300">{{ stats ? stats.high_risk_departments : '—' }}</p>
+          <div class="shrink-0 border border-[var(--line)] bg-[var(--panel-2)] px-3 py-1.5" style="border-radius:var(--r-chip)">
+            <p class="lbl">{{ t('stat_high') }}</p>
+            <p class="readout mt-0.5 text-lg leading-tight">{{ stats ? stats.high_risk_departments : '—' }}</p>
           </div>
-          <div class="shrink-0 rounded-xl bg-white/5 px-3 py-1.5">
-            <p class="text-[9px] text-amber-200/60">{{ t('stat_maxfrp') }}</p>
-            <p class="text-lg font-bold leading-tight text-amber-50">{{ stats ? stats.max_frp : '—' }} <span class="text-[10px] font-normal text-amber-200/50">MW</span></p>
+          <div class="shrink-0 border border-[var(--line)] bg-[var(--panel-2)] px-3 py-1.5" style="border-radius:var(--r-chip)">
+            <p class="lbl">{{ t('stat_maxfrp') }}</p>
+            <p class="readout mt-0.5 text-lg leading-tight">{{ stats ? stats.max_frp : '—' }} <span class="mono text-[10px] font-normal text-[var(--muted)]">MW</span></p>
           </div>
         </div>
 
         <!-- expanded controls -->
         <div v-show="sheet" class="mt-3 space-y-4 pb-1">
           <!-- préfecture live feed -->
-          <div v-if="prefecture && prefecture.items && prefecture.items.length" class="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-3">
+          <div v-if="prefecture && prefecture.items && prefecture.items.length" class="p-3" style="background:var(--panel-2);border:1px solid rgba(255,106,26,.25);border-radius:var(--r-panel)">
             <div class="mb-2 flex items-center gap-1.5">
-              <span v-if="!prefecture.stale" class="relative flex h-2 w-2">
-                <span class="live-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span class="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
-              </span>
-              <h3 class="text-xs font-bold text-amber-50">{{ t('pref_title') }}</h3>
-              <span class="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
-                    :class="prefecture.stale ? 'bg-amber-500/15 text-amber-300' : 'bg-red-500/15 text-red-300'">
+              <span v-if="!prefecture.stale" class="ember-sq" aria-hidden="true"></span>
+              <h3 class="text-[13px] font-bold text-[var(--ink)]" style="font-family:var(--font-display)">{{ t('pref_title') }}</h3>
+              <span class="mono border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                    :class="prefecture.stale ? 'border-[var(--line)] text-[var(--muted)]' : 'text-[var(--fire)]'"
+                    :style="prefecture.stale ? '' : 'border-color:rgba(255,106,26,.4)'">
                 {{ prefecture.stale ? `${t('pref_snapshot')} ${prefDate(prefecture.as_of)}` : t('pref_live') }}
               </span>
             </div>
             <div v-if="prefecture.evacuated && prefecture.evacuated.length" class="mb-2.5">
-              <p class="mb-1 text-[10px] font-semibold text-orange-300">{{ t('pref_evac') }}</p>
+              <p class="lbl mb-1" style="color:var(--fire)">{{ t('pref_evac') }}</p>
               <div class="flex flex-wrap gap-1">
                 <span v-for="c in prefecture.evacuated" :key="'m'+c"
-                      class="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-100">{{ c }}</span>
+                      class="mono px-1.5 py-0.5 text-[10px]"
+                      style="background:rgba(255,106,26,.10);border:1px solid rgba(255,106,26,.28);color:#ffd2b8;border-radius:var(--r-chip)">{{ c }}</span>
               </div>
             </div>
             <ul class="space-y-1.5">
               <li v-for="(it, i) in prefecture.items.slice(0, 4)" :key="'mp'+i">
                 <a :href="it.url" target="_blank" rel="noopener" class="flex gap-2">
-                  <span class="mt-px shrink-0 rounded bg-white/5 px-1.5 py-0.5 text-[9px] font-semibold tabular-nums text-amber-200/70">{{ prefDate(it.date) }}</span>
-                  <span class="line-clamp-2 text-[11px] leading-snug text-amber-50/85">{{ it.title }}</span>
+                  <span class="mono mt-px shrink-0 border border-[var(--line)] bg-[var(--panel)] px-1 py-0.5 text-[9px] text-[var(--muted)]" style="border-radius:4px">{{ prefDate(it.date) }}</span>
+                  <span class="line-clamp-2 text-[11px] leading-snug text-[var(--muted)]">{{ it.title }}</span>
                 </a>
               </li>
             </ul>
             <a :href="prefecture.source_url" target="_blank" rel="noopener"
-               class="mt-2 inline-flex text-[10px] font-semibold text-amber-300">{{ t('pref_all') }} →</a>
+               class="mono mt-2 inline-flex text-[10px] font-bold uppercase tracking-wider" style="color:var(--fire)">{{ t('pref_all') }} →</a>
           </div>
           <!-- layers -->
           <div class="space-y-2.5">
             <label v-for="l in [['fires','layer_fires','#fb923c'],['danger','layer_danger','#f97316'],['risk','layer_risk','#22c55e']]"
                    :key="'m'+l[0]" class="flex cursor-pointer items-center justify-between py-0.5">
-              <span class="flex items-center gap-2 text-sm" :class="(layers as any)[l[0]] ? 'text-amber-50' : 'text-amber-200/40'">
-                <span class="h-2.5 w-2.5 rounded-full" :style="{ background: (layers as any)[l[0]] ? (l[2] as string) : 'transparent', boxShadow: (layers as any)[l[0]] ? `0 0 6px ${l[2]}` : 'none', border: '1px solid '+l[2] }"></span>
+              <span class="flex items-center gap-2 text-[13px]" :class="(layers as any)[l[0]] ? 'text-[var(--ink)]' : 'text-[var(--faint)]'">
+                <span class="h-2.5 w-2.5" :style="{ background: (layers as any)[l[0]] ? (l[2] as string) : 'transparent', border: '1px solid '+l[2] }"></span>
                 {{ t(l[1] as string) }}
               </span>
               <input type="checkbox" v-model="(layers as any)[l[0]]" class="peer sr-only">
-              <span class="relative h-5 w-9 rounded-full bg-white/15 transition peer-checked:bg-amber-500/80">
-                <span class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition" :class="(layers as any)[l[0]] ? 'translate-x-4' : ''"></span>
+              <span class="relative h-5 w-9 rounded-full bg-[var(--line-strong)] transition-colors peer-checked:bg-[var(--fire)]">
+                <span class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-[var(--ink)] transition-transform" :class="(layers as any)[l[0]] ? 'translate-x-4' : ''"></span>
               </span>
             </label>
           </div>
           <!-- period -->
           <div>
-            <h3 class="mb-1.5 text-xs font-bold text-amber-200/70">{{ t('period') }}</h3>
+            <h3 class="lbl mb-1.5">{{ t('period') }}</h3>
             <div class="grid grid-cols-3 gap-1.5">
               <button v-for="opt in [[1,'p_24h'],[2,'p_48h'],[5,'p_7d']]" :key="'m'+opt[0]"
                       @click="days = opt[0] as number"
-                      class="rounded-lg py-2 text-sm font-semibold transition"
-                      :class="days === opt[0] ? 'bg-amber-500/80 text-black' : 'bg-white/5 text-amber-200/70'">
+                      class="mono border py-2 text-[12px] font-bold uppercase tracking-wider transition-colors"
+                      :class="days === opt[0] ? 'border-transparent bg-[var(--fire)] text-black' : 'border-[var(--line)] text-[var(--muted)]'"
+                      style="border-radius:var(--r-chip)">
                 {{ t(opt[1] as string) }}
               </button>
             </div>
           </div>
           <!-- legend -->
           <div>
-            <h3 class="mb-1.5 text-xs font-bold text-amber-200/70">{{ layers.risk ? t('legend_risk') : t('legend_fires') }}</h3>
+            <h3 class="lbl mb-1.5">{{ layers.risk ? t('legend_risk') : t('legend_fires') }}</h3>
             <div v-if="!layers.risk" class="flex items-center gap-2">
-              <span class="text-[10px] text-amber-200/70">{{ t('legend_low') }}</span>
-              <span class="h-2 flex-1 rounded-full" style="background:linear-gradient(90deg,#fb923c,#ef4444,#b91c1c)"></span>
-              <span class="text-[10px] text-amber-200/70">{{ t('legend_high') }}</span>
+              <span class="lbl">{{ t('legend_low') }}</span>
+              <span class="h-1.5 flex-1" style="background:linear-gradient(90deg,#fb923c,#ef4444,#b91c1c)"></span>
+              <span class="lbl">{{ t('legend_high') }}</span>
             </div>
             <div v-else class="grid grid-cols-2 gap-1">
               <div v-for="(lab,i) in ['risk_1','risk_2','risk_3','risk_4']" :key="'m'+lab" class="flex items-center gap-2">
-                <span class="h-3 w-3 rounded" :style="{ background: RISK_COLORS[i+1] }"></span>
-                <span class="text-[10px] text-amber-200/80">{{ t(lab) }}</span>
+                <span class="h-2.5 w-2.5" :style="{ background: RISK_COLORS[i+1] }"></span>
+                <span class="text-[11px] text-[var(--muted)]">{{ t(lab) }}</span>
               </div>
             </div>
           </div>
           <!-- credit -->
-          <div class="flex items-center justify-between border-t border-amber-500/15 pt-2">
-            <p class="text-[11px] text-amber-200/80">Made with <span class="text-red-400">♥</span> by <span class="font-semibold text-amber-50">Cycl0o0</span></p>
+          <div class="flex items-center justify-between border-t border-[var(--line)] pt-2">
+            <p class="mono text-[11px] text-[var(--muted)]">Made with <span style="color:var(--fire)">♥</span> by <span class="font-bold text-[var(--ink)]">Cycl0o0</span></p>
             <a href="https://github.com/Cycl0o0/FiReport" target="_blank" rel="noopener"
-               class="flex items-center gap-1 text-[11px] text-amber-200/80" aria-label="Source on GitHub">
+               class="mono flex items-center gap-1 text-[11px] text-[var(--muted)]" aria-label="Source on GitHub">
               <svg viewBox="0 0 24 24" class="h-3.5 w-3.5 fill-current"><path d="M12 .5C5.7.5.5 5.7.5 12a11.5 11.5 0 0 0 7.9 10.9c.6.1.8-.2.8-.5v-1.7c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17 4.6 18 4.9 18 4.9c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.6.8.5A11.5 11.5 0 0 0 23.5 12C23.5 5.7 18.3.5 12 .5Z"/></svg>
               Source
             </a>
@@ -746,21 +721,20 @@ onMounted(async () => {
 </template>
 
 <style>
-.fade-enter-active, .fade-leave-active { transition: opacity .2s, transform .2s; }
-.fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(8px); }
+.fade-enter-active, .fade-leave-active { transition: opacity .16s linear, transform .16s var(--ease, ease); }
+.fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(6px); }
 
-/* safety modal — a text-heavy panel needs a near-opaque backing over satellite */
+/* safety modal — matte instrument surface, opaque over satellite */
 .safety-card {
-  background: linear-gradient(180deg, rgba(22, 12, 12, 0.97), rgba(10, 8, 12, 0.97));
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(251, 146, 60, 0.22);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(239, 68, 68, 0.08);
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-panel);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
 }
-.modal-enter-active, .modal-leave-active { transition: opacity .25s ease; }
-.modal-enter-active .safety-card, .modal-leave-active .safety-card { transition: opacity .25s ease, transform .25s cubic-bezier(0.16, 1, 0.3, 1); }
+.modal-enter-active, .modal-leave-active { transition: opacity .2s linear; }
+.modal-enter-active .safety-card, .modal-leave-active .safety-card { transition: opacity .2s linear, transform .2s cubic-bezier(0.16, 1, 0.3, 1); }
 .modal-enter-from, .modal-leave-to { opacity: 0; }
-.modal-enter-from .safety-card, .modal-leave-to .safety-card { opacity: 0; transform: translateY(16px) scale(0.98); }
+.modal-enter-from .safety-card, .modal-leave-to .safety-card { opacity: 0; transform: translateY(12px); }
 @media (prefers-reduced-motion: reduce) {
   .modal-enter-active, .modal-leave-active,
   .modal-enter-active .safety-card, .modal-leave-active .safety-card { transition: none; }
