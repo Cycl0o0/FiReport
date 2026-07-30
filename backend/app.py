@@ -75,23 +75,26 @@ _PREF_COMMUNE_RE = re.compile(r"communes?\s+(?:de|du|des|d’|d')\s+(.+?)(?:\s*[
 # `as_of` date and always shown alongside the live source link.
 _PREF_FALLBACK_URL = PREF_BASE + PREF_INDEX + "/"
 PREF_FALLBACK = {
-    "as_of": "2026-07-26",
-    "evacuated": ["Saint-Aubin-de-Médoc", "Saint-Médard-en-Jalles", "Martignas-sur-Jalle",
-                  "Saint-Jean-d’Illac", "Le Haillan", "Eysines (ext. rocade)",
-                  "Mérignac (ext. rocade)", "Marcheprime", "Le Barp", "Biganos", "Mios", "Cestas"],
+    "as_of": "2026-07-30",
+    # Réintégrations : Eysines, Mérignac, Le Haillan (28/07) ; Mios, Le Barp,
+    # Cestas, Saint-Jean-d’Illac, Martignas, Saint-Médard, Saint-Aubin,
+    # Salaunes, Sainte-Hélène (30/07). Restent évacuées :
+    "evacuated": ["Saumos", "Le Temple", "Lège-Cap-Ferret", "Arès",
+                  "Andernos-les-Bains", "Lanton", "Audenge", "Marcheprime",
+                  "Biganos", "Lacanau (campings & hébergements touristiques)"],
     "items": [
-        {"title": "Incendie de Gironde : point de situation à 2h ce dimanche 26 juillet",
-         "date": "2026-07-26", "url": _PREF_FALLBACK_URL + "Incendie-de-Gironde-point-de-situation-a-2h-ce-dimanche-26-juillet"},
-        {"title": "Incendie en Gironde : déclenchement de FR-Alert pour l’évacuation des nouvelles communes",
-         "date": "2026-07-25", "url": _PREF_FALLBACK_URL + "Incendie-en-Gironde-declenchement-de-FR-Alert-pour-l-evacuation-des-nouvelles-communes"},
-        {"title": "FR-Alert pour l’évacuation des communes du Haillan, Eysines ext rocade et Mérignac ext rocade",
-         "date": "2026-07-25", "url": _PREF_FALLBACK_URL + "FR-Alert-pour-l-evacuation-des-communes-du-Haillan-Eysines-ext-rocade-et-Merignac-ext-rocade"},
-        {"title": "Incendie de Saumos : point de situation à 21h ce samedi 25 juillet",
-         "date": "2026-07-25", "url": _PREF_FALLBACK_URL + "Incendie-de-Saumos-point-de-situation-a-21h-ce-samedi-25-juillet"},
-        {"title": "Évacuations des communes de Marcheprime, Le Barp, Biganos, Mios, Cestas",
-         "date": "2026-07-25", "url": _PREF_FALLBACK_URL + "Evacuations-des-communes-de-Marcheprime-Le-Barp-Biganos-Mios-Cestas"},
-        {"title": "Incendie de Saumos : point de situation à 13h ce samedi 25 juillet",
-         "date": "2026-07-25", "url": _PREF_FALLBACK_URL + "Incendie-de-Saumos-point-de-situation-a-13h-ce-samedi-25-juillet"},
+        {"title": "Incendie de Saumos : réintégration immédiate autorisée dans 9 nouvelles communes et réouverture de l’autoroute A63",
+         "date": "2026-07-30", "url": _PREF_FALLBACK_URL + "Incendie-de-Saumos-Reintegration-dans-9-nouvelles-communes-et-reouverture-de-l-autoroute-A63"},
+        {"title": "Incendie de Saumos : point de situation à 23h00, ce mercredi 29 juillet",
+         "date": "2026-07-29", "url": _PREF_FALLBACK_URL + "Incendie-de-Saumos-point-de-situation-a-23h00-ce-mercredi-29-juillet"},
+        {"title": "Incendie de Saumos : point de situation à 15h30, ce mercredi 29 juillet",
+         "date": "2026-07-29", "url": _PREF_FALLBACK_URL + "Incendie-de-Saumos-point-de-situation-a-15h30-ce-mercredi-29-juillet"},
+        {"title": "Incendie de Saumos : les habitants d’Eysines, Mérignac, Le Haillan autorisés à rentrer chez eux",
+         "date": "2026-07-28", "url": _PREF_FALLBACK_URL + "Incendie-de-Saumos-les-habitants-d-Eysines-Merignac-Le-Haillan"},
+        {"title": "Lacanau : évacuations des campings, des résidences de tourisme et des villages vacances",
+         "date": "2026-07-28", "url": _PREF_FALLBACK_URL + "Lacanau-evacuations-des-campings-des-residences-de-tourisme-et-des-villages-vacances"},
+        {"title": "Incendie de Saumos : point de situation à 22h30, ce mardi 28 juillet",
+         "date": "2026-07-28", "url": _PREF_FALLBACK_URL + "Incendie-de-Saumos-point-de-situation-a-22h30-ce-mardi-28-juillet"},
     ],
 }
 
