@@ -64,7 +64,7 @@ UA = {"User-Agent": "FirePort/1.0 (+https://fireport.cyclooo.fr)"}
 PREF_BASE  = os.environ.get("PREF_BASE", "https://www.gironde.gouv.fr")
 PREF_INDEX = os.environ.get(
     "PREF_INDEX",
-    "/Actualites/Communiques-de-presse/Communiques-de-presse-2026/Juillet-2026",
+    "/Actualites/Communiques-de-presse/Communiques-de-presse-2026/Aout-2026",
 )
 PREF_KEYWORDS = re.compile(r"incendie|feu[x]?\b|saumos|évacu|evacu|fr-alert|vigilance", re.I)
 _PREF_COMMUNE_RE = re.compile(r"communes?\s+(?:de|du|des|d’|d')\s+(.+?)(?:\s*[:–-]|$)", re.I)
@@ -74,27 +74,26 @@ _PREF_COMMUNE_RE = re.compile(r"communes?\s+(?:de|du|des|d’|d')\s+(.+?)(?:\s*[
 # official communiqués used as a fallback — clearly flagged `stale` with an
 # `as_of` date and always shown alongside the live source link.
 _PREF_FALLBACK_URL = PREF_BASE + PREF_INDEX + "/"
+_PREF_JULY_URL = PREF_BASE + "/Actualites/Communiques-de-presse/Communiques-de-presse-2026/Juillet-2026/"
 PREF_FALLBACK = {
-    "as_of": "2026-07-30",
-    # Réintégrations : Eysines, Mérignac, Le Haillan (28/07) ; Mios, Le Barp,
-    # Cestas, Saint-Jean-d’Illac, Martignas, Saint-Médard, Saint-Aubin,
-    # Salaunes, Sainte-Hélène (30/07). Restent évacuées :
-    "evacuated": ["Saumos", "Le Temple", "Lège-Cap-Ferret", "Arès",
-                  "Andernos-les-Bains", "Lanton", "Audenge", "Marcheprime",
-                  "Biganos", "Lacanau (campings & hébergements touristiques)"],
+    "as_of": "2026-08-05",
+    # Toutes les communes ont été réintégrées — les deux dernières (Lège-Cap-
+    # Ferret et Le Porge) le 02/08. Feu fixé, vigilance passée de rouge à
+    # orange le 04/08 ; réouverture progressive des campings.
+    "evacuated": [],
     "items": [
-        {"title": "Incendie de Saumos : réintégration immédiate autorisée dans 9 nouvelles communes et réouverture de l’autoroute A63",
-         "date": "2026-07-30", "url": _PREF_FALLBACK_URL + "Incendie-de-Saumos-Reintegration-dans-9-nouvelles-communes-et-reouverture-de-l-autoroute-A63"},
-        {"title": "Incendie de Saumos : point de situation à 23h00, ce mercredi 29 juillet",
-         "date": "2026-07-29", "url": _PREF_FALLBACK_URL + "Incendie-de-Saumos-point-de-situation-a-23h00-ce-mercredi-29-juillet"},
-        {"title": "Incendie de Saumos : point de situation à 15h30, ce mercredi 29 juillet",
-         "date": "2026-07-29", "url": _PREF_FALLBACK_URL + "Incendie-de-Saumos-point-de-situation-a-15h30-ce-mercredi-29-juillet"},
-        {"title": "Incendie de Saumos : les habitants d’Eysines, Mérignac, Le Haillan autorisés à rentrer chez eux",
-         "date": "2026-07-28", "url": _PREF_FALLBACK_URL + "Incendie-de-Saumos-les-habitants-d-Eysines-Merignac-Le-Haillan"},
-        {"title": "Lacanau : évacuations des campings, des résidences de tourisme et des villages vacances",
-         "date": "2026-07-28", "url": _PREF_FALLBACK_URL + "Lacanau-evacuations-des-campings-des-residences-de-tourisme-et-des-villages-vacances"},
-        {"title": "Incendie de Saumos : point de situation à 22h30, ce mardi 28 juillet",
-         "date": "2026-07-28", "url": _PREF_FALLBACK_URL + "Incendie-de-Saumos-point-de-situation-a-22h30-ce-mardi-28-juillet"},
+        {"title": "Incendie de Saumos : point de situation ce mardi 4 août à 20h",
+         "date": "2026-08-04", "url": _PREF_FALLBACK_URL + "Incendie-de-Saumos-point-de-situation-ce-mardi-4-aout-a-20h"},
+        {"title": "Incendie de Saumos : réouverture de plusieurs campings et poursuite des consignes de vigilance",
+         "date": "2026-08-04", "url": _PREF_FALLBACK_URL + "Incendie-de-Saumos-Reouverture-de-plusieurs-campings-et-poursuite-des-consignes-de-vigilance"},
+        {"title": "Incendie de Saumos : point de situation du lundi 3 août",
+         "date": "2026-08-03", "url": _PREF_FALLBACK_URL + "Incendie-de-Saumos-point-de-situation-du-lundi-3-aout"},
+        {"title": "Incendie de Saumos : réintégration autorisée dans les communes de Lège-Cap-Ferret et du Porge",
+         "date": "2026-08-02", "url": _PREF_FALLBACK_URL + "Incendie-de-Saumos-Reintegration-autorisee-dans-les-communes-de-lege-cap-ferret-et-du-porge"},
+        {"title": "Incendie de Saumos : réintégration autorisée dans 2 nouvelles communes (Andernos-les-Bains et Lanton)",
+         "date": "2026-07-31", "url": _PREF_JULY_URL + "Incendie-de-Saumos-Reintegration-autorisee-dans-2-nouvelles-communes-Andernos-les-bains-et-Lanton"},
+        {"title": "Incendie de Saumos : réintégration autorisée dans de nouvelles communes (Biganos, Audenge, campings de Lacanau)",
+         "date": "2026-07-31", "url": _PREF_JULY_URL + "Incendie-de-Saumos-Reintegration-autorisee-dans-de-nouvelles-communes"},
     ],
 }
 
